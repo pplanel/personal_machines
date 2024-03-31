@@ -1,0 +1,53 @@
+---
+- name: Configure Server
+  hosts: aws_instances
+  become: yes
+  roles:
+    - config
+    - docker
+
+  tasks:
+
+    - name: Install required packages
+      apt:
+        name:
+          - golang-go
+        state: present
+
+    - name: Install AWS CLI
+      pip:
+        name: awscli
+        executable: pip3
+
+    - name: Set up pplanel user with sudo privileges
+      user:
+        name: pplanel
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        create_home: yes
+
+    - name: Copy authorized_keys for pplanel
+      ansible.builtin.copy:
+        src: /home/ubuntu/.ssh/authorized_keys
+        dest: /home/pplanel/.ssh/authorized_keys
+        owner: pplanel
+        group: pplanel
+        mode: '0644'
+
+    - name: Update sshd_config to disallow root login and password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        line: |
+          PermitRootLogin no
+          PasswordAuthentication no
+        backup: yes
+      notify: Restart SSH
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: ssh
+        state: restarted
+
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDH2NCb+4EAI72iKq5rWbig0dYjXzifcIp2n3q01CUKstXpttUUQRe87oT5xm9EUdZr59Eet6hZ7m15pgiB03QEGrcc814lLItjgT/8LKgn+/1OT7kHgUxXgemfh0iOvD9lVkGpVz0cTe/W+Np3OpKFGKmTucQXe9Iqstba2xzpIUySrPjPo4t/yWybVAAg73V6y4aQ8K1ntmo7o0zacZW5F7hnEPc+M+8D5TpadF9egS7ljeMaeCf5O8dwD88oDE3dVTeZ7HduEHPI97kYVaSwOhKxYHRjTwZ8z3XZNkgN4+p6uUfTNq1DTjWzhbfscKT5dntMyIW8GTDjutT7PQ9R ansible-generatedonip-10-0-0-57
