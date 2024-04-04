@@ -4,22 +4,40 @@ terraform {
       source  = "hashicorp/aws"
       version = "5.35.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "4.28.0"
+    }
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
+provider "cloudflare" {
 }
 
-data "aws_key_pair" "my_keypair" {
-  key_name = var.keypair
+provider "aws" {
+  region = "us-east-2"
+}
+
+resource "aws_key_pair" "my_keypair" {
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+data "cloudflare_zone" "pplanel_dev" {
+  name = "pplanel.dev"
+}
+
+resource "cloudflare_record" "machine" {
+  zone_id = data.cloudflare_zone.pplanel_dev.id
+  name    = "machine"
+  value   = aws_instance.server01.public_dns
+  type    = "CNAME"
 }
 
 resource "aws_instance" "server01" {
   ami           = var.ami_id
   instance_type = var.instance_type
 
-  key_name                    = data.aws_key_pair.my_keypair.key_name
+  key_name                    = aws_key_pair.my_keypair.key_name
   subnet_id                   = var.public_subnet_id
   vpc_security_group_ids      = [aws_security_group.permitir_ssh_http.id]
   associate_public_ip_address = true

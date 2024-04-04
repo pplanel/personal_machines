@@ -27,5 +27,6 @@
       - pkg-config
       - re2c
       - wget
+      - neovim
     state: present
     update_cache: true

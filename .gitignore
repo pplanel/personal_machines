@@ -5,3 +5,5 @@ terraform.tfstate.backup
 envs/*.tfvars
 !envs/sample.tfvars
 .envrc
+.terraform/providers/registry.terraform.io/cloudflare/cloudflare/4.28.0/darwin_arm64
+sessionmanager-bundle
