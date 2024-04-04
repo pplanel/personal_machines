@@ -8,7 +8,8 @@ To get started with `personal_machines`, ensure you have Terraform and Ansible i
 Then, clone this repository to your local machine:
 ```bash
 git clone https://github.com/yourusername/personal_machines.git
-cp envs/sample.tfvars
+cp envs/sample.tfvars envs/aws.tfvars
+vim envs/aws.tfvars
 terraform init
 terraform plan
 terraform apply
