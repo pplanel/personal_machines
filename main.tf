@@ -12,6 +12,7 @@ terraform {
 }
 
 provider "cloudflare" {
+  api_token = var.cf_api
 }
 
 provider "aws" {
@@ -22,13 +23,13 @@ resource "aws_key_pair" "my_keypair" {
   public_key = file("~/.ssh/id_rsa.pub")
 }
 
-data "cloudflare_zone" "pplanel_dev" {
-  name = "pplanel.dev"
+data "cloudflare_zone" "cf_zone" {
+  name = var.zone_name
 }
 
 resource "cloudflare_record" "machine" {
-  zone_id = data.cloudflare_zone.pplanel_dev.id
-  name    = "machine"
+  zone_id = data.cloudflare_zone.cf_zone.id
+  name    = var.subdomain
   value   = aws_instance.server01.public_dns
   type    = "CNAME"
 }
@@ -58,9 +59,9 @@ resource "aws_instance" "server01" {
   }
 }
 
-resource "aws_security_group" "permitir_ssh_http" {
-  name        = "permitir_ssh"
-  description = "Permite SSH e HTTP na instancia EC2"
+resource "aws_security_group" "allow_ssh_http" {
+  name        = "allow_ssh"
+  description = "Allow SSH and in EC2 instace"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -87,6 +88,6 @@ resource "aws_security_group" "permitir_ssh_http" {
   }
 
   tags = {
-    Name = "permitir_ssh_e_http"
+    Name = "allow_ssh_http"
   }
 }

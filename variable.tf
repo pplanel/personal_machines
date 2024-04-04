@@ -17,3 +17,15 @@ variable "ami_id" {
 variable "instance_type" {
   type = string
 }
+
+variable "cf_api" {
+  type = string
+}
+
+variable "zone_name" {
+  type = string
+}
+
+variable "subdomain" {
+  type = string
+}
