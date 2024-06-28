@@ -1,3 +1,15 @@
+variable "vault_name" {
+  type = string
+}
+
+variable "secret_name" {
+  type = string
+}
+
+variable "public_key" {
+  type = string
+}
+
 variable "vpc_id" {
   type = string
 }

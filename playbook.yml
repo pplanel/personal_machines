@@ -1,39 +1,68 @@
 ---
 - name: Configure Server
-  hosts: aws_instances
-  become: yes
+  hosts: all
+  become: true
   roles:
     - config
-    - docker
+    - geerlingguy.docker
 
   tasks:
-
-    - name: Install required packages
-      apt:
-        name:
-          - golang-go
-        state: present
-
-    - name: Install AWS CLI
-      pip:
-        name: awscli
-        executable: pip3
-
     - name: Set up pplanel user with sudo privileges
-      user:
+      ansible.builtin.user:
         name: pplanel
         shell: /bin/bash
-        groups: sudo
+        groups: 
+          - sudo
+          - docker
         append: yes
         create_home: yes
+      register: created_user
 
-    - name: Copy authorized_keys for pplanel
-      ansible.builtin.copy:
-        remote_src: /home/ubuntu/.ssh/authorized_keys
-        dest: /home/pplanel/.ssh/authorized_keys
-        owner: pplanel
-        group: pplanel
-        mode: '0644'
+    - name: Install Rust
+      ansible.builtin.include_role:
+        name: hurricanehrndz.rustup
+      vars:
+        rustup_user: pplanel
+        rustup_cargo_crates: []
+
+    - name: Create the .ssh directory
+      become: true
+      become_user: "{{ created_user.name }}"
+      ansible.builtin.file:
+        path: "{{ created_user.home }}/.ssh"
+        state: directory
+        mode: '0755'
+
+    - name: Generate an OpenSSH keypair with the default values (4096 bits, rsa)
+      become: true
+      become_user: "{{ created_user.name }}"
+      community.crypto.openssh_keypair:
+        path: "{{ created_user.home }}/.ssh/deploy_key"
+        comment: "api_host@aws"
+      register: created_deploy_key
+
+    - name: Read Ubuntu authorized_keys
+      ansible.builtin.slurp:
+        src: "/home/ubuntu/.ssh/authorized_keys"
+      register: "ubuntu_authorized_keys"
+
+    - name: Add deploy_key.pub to the authorized_keys file
+      become: true
+      become_user: "{{ created_user.name }}"
+      ansible.posix.authorized_key:
+        key: "{{ created_deploy_key.public_key }}"
+        state: present
+        user: "{{ created_user.name }}"
+
+    - name: Add genesis pkey to the authorized_keys file
+      become: true
+      become_user: "{{ created_user.name }}"
+      ansible.builtin.lineinfile:
+        path: "{{ created_user.home }}/.ssh/authorized_keys"
+        state: present
+        insertafter: "EOF"
+        line: "{{ ubuntu_authorized_keys['content'] }}"
+
 
     - name: Update sshd_config to disallow root login and password authentication
       lineinfile:

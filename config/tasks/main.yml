@@ -28,5 +28,7 @@
       - re2c
       - wget
       - neovim
+      - git
+      - golang-go
     state: present
     update_cache: true

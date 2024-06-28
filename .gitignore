@@ -7,3 +7,4 @@ envs/*.tfvars
 .envrc
 .terraform/providers/registry.terraform.io/cloudflare/cloudflare/4.28.0/darwin_arm64
 sessionmanager-bundle
+.terraform/providers/registry.terraform.io/ansible/ansible/1.3.0/darwin_arm64

@@ -1,0 +1,7 @@
+---
+roles:
+  - name: geerlingguy.docker
+  - name: hurricanehrndz.rustup
+
+collections:
+  - name: cloud.terraform
