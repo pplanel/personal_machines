@@ -9,8 +9,20 @@ Then, clone this repository to your local machine:
 ```bash
 git clone https://github.com/yourusername/personal_machines.git
 cp envs/sample.tfvars envs/aws.tfvars
+
 vim envs/aws.tfvars
+
+# Install Ansible dependencies
+ansible-galaxy install -r requirements.yml
+
+# Bootstrap TF
 terraform init
 terraform plan
 terraform apply
+
+# Apply playbook
+ansible-playbook -i inventory.yml playbook.yml
+
+# Destroy
 terraform destroy
+
