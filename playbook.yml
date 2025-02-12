@@ -4,26 +4,22 @@
   become: true
   roles:
     - config
-    - geerlingguy.docker
 
   tasks:
+    - name: Set OS-specific variables
+      ansible.builtin.set_fact:
+        ssh_service_name: "{{ 'sshd' if ansible_distribution == 'Amazon' else 'ssh' }}"
+        sudo_group: "{{ 'wheel' if ansible_distribution == 'Amazon' else 'sudo' }}"
+
     - name: Set up pplanel user with sudo privileges
       ansible.builtin.user:
         name: pplanel
         shell: /bin/bash
-        groups: 
-          - sudo
-          - docker
-        append: yes
-        create_home: yes
+        groups:
+          - "{{ sudo_group }}"
+        append: true
+        create_home: true
       register: created_user
-
-    - name: Install Rust
-      ansible.builtin.include_role:
-        name: hurricanehrndz.rustup
-      vars:
-        rustup_user: pplanel
-        rustup_cargo_crates: []
 
     - name: Create the .ssh directory
       become: true
@@ -31,7 +27,7 @@
       ansible.builtin.file:
         path: "{{ created_user.home }}/.ssh"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Generate an OpenSSH keypair with the default values (4096 bits, rsa)
       become: true
@@ -41,10 +37,14 @@
         comment: "api_host@aws"
       register: created_deploy_key
 
-    - name: Read Ubuntu authorized_keys
+    - name: Set default user variable
+      ansible.builtin.set_fact:
+        default_user: "{{ 'ec2-user' if ansible_distribution == 'Amazon' else 'ubuntu' }}"
+
+    - name: Read default user authorized_keys
       ansible.builtin.slurp:
-        src: "/home/ubuntu/.ssh/authorized_keys"
-      register: "ubuntu_authorized_keys"
+        src: "/home/{{ default_user }}/.ssh/authorized_keys"
+      register: "default_user_authorized_keys"
 
     - name: Add deploy_key.pub to the authorized_keys file
       become: true
@@ -54,28 +54,26 @@
         state: present
         user: "{{ created_user.name }}"
 
-    - name: Add genesis pkey to the authorized_keys file
+    - name: Add default user's keys to the authorized_keys file
       become: true
       become_user: "{{ created_user.name }}"
       ansible.builtin.lineinfile:
         path: "{{ created_user.home }}/.ssh/authorized_keys"
         state: present
         insertafter: "EOF"
-        line: "{{ ubuntu_authorized_keys['content'] }}"
-
+        line: "{{ default_user_authorized_keys['content'] | b64decode }}"
 
     - name: Update sshd_config to disallow root login and password authentication
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         line: |
           PermitRootLogin no
           PasswordAuthentication no
-        backup: yes
+        backup: true
       notify: Restart SSH
 
   handlers:
     - name: Restart SSH
-      service:
-        name: ssh
+      ansible.builtin.service:
+        name: "{{ ssh_service_name }}"
         state: restarted
-

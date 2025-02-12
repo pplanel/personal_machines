@@ -27,10 +27,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-data "aws_key_pair" "pplanel" {
-  key_name = var.keypair
-}
-
 data "cloudflare_zone" "cf_zone" {
   name = var.zone_name
 }
@@ -65,11 +61,27 @@ resource "aws_instance" "server01" {
   }
 
   ebs_block_device {
-    device_name           = "/dev/xvda"
-    volume_size           = "200"
-    volume_type           = "gp3"
-    encrypted             = true
-    delete_on_termination = false
+    device_name = "/dev/xvda"
+    volume_size = "500"
+    volume_type = "gp3"
+    iops        = 7000
+    throughput  = 700
+
+    tags = {
+      Name = "accounts-volume"
+    }
+  }
+
+  ebs_block_device {
+    device_name = "/dev/xvda"
+    volume_size = "2000"
+    volume_type = "gp3"
+    iops        = 9000
+    throughput  = 700
+
+    tags = {
+      Name = "data-volume"
+    }
   }
 }
 
@@ -78,7 +90,7 @@ resource "ansible_host" "host" {
   groups = ["all"]
 
   variables = {
-    ansible_user                 = "ubuntu"
+    ansible_user                 = "ec2-user"
     ansible_ssh_private_key_file = "{{ lookup('community.general.onepassword', '${var.secret_name}', field='private_key', vault='${var.vault_name}') }}"
   }
 }
@@ -91,6 +103,11 @@ resource "aws_iam_instance_profile" "ssm_instance_profile" {
 resource "aws_iam_role_policy_attachment" "ssm_iam_role_policy_attachment" {
   role       = aws_iam_role.ssm_iam_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "s3_read_only_policy_attachment" {
+  role       = aws_iam_role.ssm_iam_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
 
 resource "aws_iam_role" "ssm_iam_role" {

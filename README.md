@@ -4,9 +4,11 @@
 
 ## Getting Started
 
-To get started with `personal_machines`, ensure you have Terraform and Ansible installed on your machine. 
+To get started with `personal_machines`, ensure you have Terraform and Ansible installed on your machine.
 Then, clone this repository to your local machine:
+
 ```bash
+
 git clone https://github.com/yourusername/personal_machines.git
 cp envs/sample.tfvars envs/aws.tfvars
 

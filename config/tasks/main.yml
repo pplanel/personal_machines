@@ -1,12 +1,20 @@
 ---
-- name: Update&Upgrade
+- name: Update package cache (Ubuntu)
   ansible.builtin.apt:
     name: aptitude
     state: present
     update_cache: true
+  when: ansible_distribution == "Debian"
 
-- name: Install dependencies
-  ansible.builtin.apt:
+- name: Update package cache (Amazon Linux)
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+    update_cache: true
+  when: ansible_distribution  == 'RedHat'
+
+- name: Install dependencies (Ubuntu)
+  ansible.builtin.package:
     name:
       - net-tools
       - apt-transport-https
@@ -32,3 +40,17 @@
       - golang-go
     state: present
     update_cache: true
+  when: ansible_distribution == "Debian"
+
+- name: Install dependencies (Amazon Linux)
+  ansible.builtin.yum:
+    name:
+      - gcc-c++
+      - gcc
+      - glibc-devel
+      - make
+      - pkgconfig
+      - golang
+    state: present
+    update_cache: true
+  when: ansible_distribution == 'RedHat'
