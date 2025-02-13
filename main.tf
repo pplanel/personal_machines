@@ -1,4 +1,5 @@
 terraform {
+  required_version = "~> 1.10"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -59,30 +60,42 @@ resource "aws_instance" "server01" {
     encrypted             = true
     delete_on_termination = true
   }
+}
 
-  ebs_block_device {
-    device_name = "/dev/xvda"
-    volume_size = "500"
-    volume_type = "gp3"
-    iops        = 7000
-    throughput  = 700
+resource "aws_ebs_volume" "accounts" {
+  availability_zone = aws_instance.server01.availability_zone
+  size              = 1000
+  type              = "gp3"
+  iops              = 7000
+  throughput        = 700
 
-    tags = {
-      Name = "accounts-volume"
-    }
+  tags = {
+    Name = "accounts-volume"
   }
+}
 
-  ebs_block_device {
-    device_name = "/dev/xvda"
-    volume_size = "2000"
-    volume_type = "gp3"
-    iops        = 9000
-    throughput  = 700
+resource "aws_ebs_volume" "data" {
+  availability_zone = aws_instance.server01.availability_zone
+  size              = 2000
+  type              = "gp3"
+  iops              = 9000
+  throughput        = 700
 
-    tags = {
-      Name = "data-volume"
-    }
+  tags = {
+    Name = "data-volume"
   }
+}
+
+resource "aws_volume_attachment" "accounts_att" {
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.accounts.id
+  instance_id = aws_instance.server01.id
+}
+
+resource "aws_volume_attachment" "data_att" {
+  device_name = "/dev/sdg"
+  volume_id   = aws_ebs_volume.data.id
+  instance_id = aws_instance.server01.id
 }
 
 resource "ansible_host" "host" {
