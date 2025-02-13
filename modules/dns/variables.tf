@@ -12,3 +12,8 @@ variable "public_dns" {
   type        = string
   description = "The public DNS name to point to"
 }
+
+variable "cf_api" {
+  type = string
+
+}

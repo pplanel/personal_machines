@@ -1,3 +1,12 @@
+terraform {
+  required_version = "~> 1.10"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "5.86.1"
+    }
+  }
+}
 resource "aws_instance" "server01" {
   ami           = var.ami_id
   instance_type = var.instance_type

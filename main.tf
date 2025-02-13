@@ -3,11 +3,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.35.0"
+      version = "5.86.1"
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "4.28.0"
+      version = "~> 5"
     }
     ansible = {
       source  = "ansible/ansible"
@@ -20,12 +20,14 @@ locals {
   domain = "${var.subdomain}.${var.zone_name}"
 }
 
-provider "cloudflare" {
-  api_token = var.cf_api
-}
 
 provider "aws" {
   region = "us-east-1"
+}
+
+provider "cloudflare" {
+  api_token = var.cf_api
+
 }
 
 resource "aws_key_pair" "new_kp" {
@@ -56,6 +58,8 @@ module "dns" {
   zone_name  = var.zone_name
   subdomain  = var.subdomain
   public_dns = module.compute.public_dns
+  cf_api     = var.cf_api
+
 }
 
 module "ansible" {
