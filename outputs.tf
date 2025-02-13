@@ -1,9 +1,9 @@
 output "public_ip" {
-  value = aws_instance.server01.public_ip
+  value = module.compute.public_ip
 }
 
 output "instance_id" {
-  value = aws_instance.server01.id
+  value = module.compute.instance_id
 }
 
 output "key_pair_name" {

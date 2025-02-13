@@ -28,154 +28,40 @@ provider "aws" {
   region = "us-east-1"
 }
 
-data "cloudflare_zone" "cf_zone" {
-  name = var.zone_name
-}
-
 resource "aws_key_pair" "new_kp" {
   key_name   = "general_kp"
   public_key = var.public_key
 }
 
-resource "cloudflare_record" "machine" {
-  zone_id = data.cloudflare_zone.cf_zone.id
-  name    = var.subdomain
-  value   = aws_instance.server01.public_dns
-  type    = "CNAME"
+module "compute" {
+  source = "./modules/compute"
+
+  ami_id           = var.ami_id
+  instance_type    = var.instance_type
+  key_pair_name    = aws_key_pair.new_kp.key_name
+  public_subnet_id = var.public_subnet_id
+  vpc_id           = var.vpc_id
 }
 
-resource "aws_instance" "server01" {
-  ami           = var.ami_id
-  instance_type = var.instance_type
+module "storage" {
+  source = "./modules/storage"
 
-  key_name                    = aws_key_pair.new_kp.key_name
-  subnet_id                   = var.public_subnet_id
-  vpc_security_group_ids      = [aws_security_group.allow_ssh_http.id]
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ssm_instance_profile.name
-
-  root_block_device {
-    volume_size           = "80"
-    volume_type           = "gp3"
-    encrypted             = true
-    delete_on_termination = true
-  }
+  availability_zone = module.compute.availability_zone
+  instance_id       = module.compute.instance_id
 }
 
-resource "aws_ebs_volume" "accounts" {
-  availability_zone = aws_instance.server01.availability_zone
-  size              = 1000
-  type              = "gp3"
-  iops              = 7000
-  throughput        = 700
+module "dns" {
+  source = "./modules/dns"
 
-  tags = {
-    Name = "accounts-volume"
-  }
+  zone_name  = var.zone_name
+  subdomain  = var.subdomain
+  public_dns = module.compute.public_dns
 }
 
-resource "aws_ebs_volume" "data" {
-  availability_zone = aws_instance.server01.availability_zone
-  size              = 2000
-  type              = "gp3"
-  iops              = 9000
-  throughput        = 700
+module "ansible" {
+  source = "./modules/ansible"
 
-  tags = {
-    Name = "data-volume"
-  }
-}
-
-resource "aws_volume_attachment" "accounts_att" {
-  device_name = "/dev/sdf"
-  volume_id   = aws_ebs_volume.accounts.id
-  instance_id = aws_instance.server01.id
-}
-
-resource "aws_volume_attachment" "data_att" {
-  device_name = "/dev/sdg"
-  volume_id   = aws_ebs_volume.data.id
-  instance_id = aws_instance.server01.id
-}
-
-resource "ansible_host" "host" {
-  name   = local.domain
-  groups = ["all"]
-
-  variables = {
-    ansible_user                 = "ec2-user"
-    ansible_ssh_private_key_file = "{{ lookup('community.general.onepassword', '${var.secret_name}', field='private_key', vault='${var.vault_name}') }}"
-  }
-}
-
-resource "aws_iam_instance_profile" "ssm_instance_profile" {
-  name = "ssm_instance_profile"
-  role = aws_iam_role.ssm_iam_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_iam_role_policy_attachment" {
-  role       = aws_iam_role.ssm_iam_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_role_policy_attachment" "s3_read_only_policy_attachment" {
-  role       = aws_iam_role.ssm_iam_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-resource "aws_iam_role" "ssm_iam_role" {
-  name = "ssm_iam_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Sid    = ""
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-    }]
-  })
-
-}
-
-resource "aws_security_group" "allow_ssh_http" {
-  name        = "allow_ssh"
-  description = "Allow SSH and in EC2 instace"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    description = "SSH to EC2"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTP to EC2"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTPS to EC2"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "allow_ssh_http"
-  }
+  domain      = local.domain
+  secret_name = var.secret_name
+  vault_name  = var.vault_name
 }
